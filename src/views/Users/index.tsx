@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import axios from "axios";
 import { useContext, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -32,12 +33,12 @@ const Users = () => {
   }, []);
 
   const loadUsers = async () => {
+    await dispatch(setLoading(true));
     try {
-      await dispatch(setLoading(true));
       const response = await axios.get(`${Config.API_URL}/users`);
-      await dispatch(setLoading(false));
       setUsers(response.data);
-    } catch (e) {}
+    } catch (e: any) {}
+    await dispatch(setLoading(false));
   };
 
   return (

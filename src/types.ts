@@ -4,6 +4,7 @@ export interface User {
   username: string
   email: string
   balance: number
+  receipts?: Receipt[]
 }
 
 export interface Product {
@@ -14,9 +15,11 @@ export interface Product {
 }
 
 export interface Receipt {
+  _id: string
   user?: User
   product?: Product
   price: number
   quantity: number
   amount: number
+  updatedAt: string
 }

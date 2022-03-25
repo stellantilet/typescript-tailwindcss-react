@@ -1,16 +1,29 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import axios from "axios";
-import React, { SyntheticEvent, useContext, useEffect, useState } from "react";
+import { SyntheticEvent, useContext, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 import AppContext from "../../AppContext";
 import Config from "../../config";
 import { setLoading } from "../../stores/actions/AppAction";
 import { Product, User } from "../../types";
 import MainLayout from "../Layouts/Main";
 
-const ProductItem = ({ product }: { product: Product }) => {
-  const handleSubmit = (e: SyntheticEvent) => {
-    console.log(e);
+const ProductItem = ({
+  product,
+  onSubmit = async () => {},
+}: {
+  product: Product;
+  onSubmit?: (product: Product, quantity: number) => Promise<void>;
+}) => {
+  const [quantity, setQuantity] = useState<string>("");
+  const handleQuantityChange = (e: SyntheticEvent) => {
+    const el = e.target as HTMLInputElement;
+    setQuantity(el.value);
+  };
+  const handleSubmit = async (e: SyntheticEvent) => {
     e.preventDefault();
+    await onSubmit(product, parseInt(quantity, 10) + 0);
   };
   return (
     <tr className="p-4 my-4">
@@ -22,8 +35,10 @@ const ProductItem = ({ product }: { product: Product }) => {
           <input
             required
             type="number"
-            max={product.quantity}
+            // max={product.quantity}
             min={1}
+            value={quantity}
+            onChange={handleQuantityChange}
             className="border rounded px-4 py-1"
           />
           <button className="border rounded px-4 py-1 bg-indigo-500 hover:bg-indigo-600 text-white">
@@ -42,8 +57,8 @@ const Products = () => {
   const params = useParams();
 
   const loadProducts = async () => {
+    await dispatch(setLoading(true));
     try {
-      await dispatch(setLoading(true));
       const res1 = await axios.get(`${Config.API_URL}/products`);
       setProducts(res1.data);
 
@@ -51,14 +66,43 @@ const Products = () => {
         `${Config.API_URL}/users/${params.username}`
       );
       setUser(res2.data);
-
-      await dispatch(setLoading(false));
     } catch (e) {}
+    await dispatch(setLoading(false));
   };
 
   useEffect(() => {
     loadProducts();
   }, []);
+
+  const handleBuyProduct = async (product: Product, quantity: number) => {
+    await dispatch(setLoading(true));
+    try {
+      await axios.post(
+        `${Config.API_URL}/purchase/${params.username}/${product._id}`,
+        {
+          quantity,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      await loadProducts();
+      toast.success("Order has been placed successfully.");
+    } catch (e: any) {
+      const { data, status } = e.response;
+      switch (status) {
+        case 400:
+          toast.error(data.error);
+          break;
+        default:
+          toast.error(e.message);
+          break;
+      }
+    }
+    await dispatch(setLoading(false));
+  };
 
   return (
     <MainLayout>
@@ -73,7 +117,7 @@ const Products = () => {
         <table className="w-full border">
           <thead>
             <tr>
-              <th className="border p-2 text-center">Name</th>
+              <th className="border p-2 text-center">Product</th>
               <th className="border p-2 text-center">Price</th>
               <th className="border p-2 text-center">Qty in Stock</th>
               <th className="border p-2 text-center">Buy</th>
@@ -81,7 +125,11 @@ const Products = () => {
           </thead>
           <tbody>
             {products.map((product) => (
-              <ProductItem product={product} key={product._id} />
+              <ProductItem
+                product={product}
+                key={product._id}
+                onSubmit={handleBuyProduct}
+              />
             ))}
           </tbody>
         </table>
